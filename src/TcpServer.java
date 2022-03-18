@@ -3,6 +3,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,6 +34,8 @@ public class TcpServer {
         try (ServerSocket serverSocket = new ServerSocket(DEFAULT_PORT)) {
             System.out.println("Server started!");
 
+            AtomicInteger threadCounter = new AtomicInteger();
+
             Socket clientSocket = null;
             while (true) {
                 try {
@@ -52,11 +55,20 @@ public class TcpServer {
                         config.get("document_root"),
                         clientSocket,
                         input,
-                        output
+                        output,
+                        threadCounter
                 );
 
-                myThread.start();
+                if (threadCounter.get() >= Integer.parseInt((config.get("thread_limit")))) {
+                    input.close();
+                    output.close();
+                    System.out.println("THREAD LIMIT, ABORTING");
+                    break;
+                }
 
+                threadCounter.getAndIncrement();
+                myThread.start();
+                System.out.println(threadCounter.get());
             }
         } catch (IOException ex) {
             ex.printStackTrace();

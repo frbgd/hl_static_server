@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,14 +19,16 @@ class ClientHandler extends Thread
     final InputStreamReader input;
     final OutputStream output;
     final Socket mynewSocket;
+    final AtomicInteger threadCounter;
     
     // Constructor
-    public ClientHandler(String rootDir, Socket mynewSocket, InputStreamReader input, OutputStream output)
+    public ClientHandler(String rootDir, Socket mynewSocket, InputStreamReader input, OutputStream output, AtomicInteger threadCounter)
     {
         this.rootDir = rootDir;
         this.mynewSocket = mynewSocket;
         this.input = input;
         this.output = output;
+        this.threadCounter = threadCounter;
     }
 
     private static String getFileExtension(File file) {
@@ -52,15 +55,18 @@ class ClientHandler extends Thread
                 }
             } catch (Exception e) {
                 reader.close();
+                this.threadCounter.getAndDecrement();
                 return;
             }
             if (lines.size() == 0) {
                 reader.close();
+                this.threadCounter.getAndDecrement();
                 return;
             }
             Matcher httpReqMatcher = httpReqPattern.matcher(lines.get(0));
             if (!httpReqMatcher.find()) {
                 reader.close();
+                this.threadCounter.getAndDecrement();
                 return;
             }
             String method = httpReqMatcher.group(1);
@@ -171,5 +177,8 @@ class ClientHandler extends Thread
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        this.threadCounter.getAndDecrement();
+
     }
 }
