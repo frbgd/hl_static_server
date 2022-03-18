@@ -13,15 +13,16 @@ class ClientHandler extends Thread
 {
     private static final Pattern httpReqPattern = Pattern.compile("^(GET|HEAD|POST|PUT|OPTIONS|DELETE|CONNECT|TRACE|PATCH) (/[\\w./\\-?=%&]*) HTTP/(1\\.[01])$");
     private static final SimpleDateFormat dateFormatter = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-    private static final String rootDir = "/Users/a19567938/IdeaProjects/http-test-suite";
-    
+
+    final String rootDir;
     final InputStreamReader input;
     final OutputStream output;
     final Socket mynewSocket;
     
     // Constructor
-    public ClientHandler(Socket mynewSocket, InputStreamReader input, OutputStream output)
+    public ClientHandler(String rootDir, Socket mynewSocket, InputStreamReader input, OutputStream output)
     {
+        this.rootDir = rootDir;
         this.mynewSocket = mynewSocket;
         this.input = input;
         this.output = output;
@@ -48,25 +49,17 @@ class ClientHandler extends Thread
             try {
                 while (!Objects.equals(prevLn = ln, "") && !Objects.equals(ln = reader.readLine(), "") && ln != null) {
                     lines.add(ln);
-                    System.out.println(ln);
-                    System.out.flush();
                 }
             } catch (Exception e) {
-                System.out.println("Reading error");
-                System.out.println("Client disconnected!");
                 reader.close();
                 return;
             }
             if (lines.size() == 0) {
-                System.out.println("Invalid request");
-                System.out.println("Client disconnected!");
                 reader.close();
                 return;
             }
             Matcher httpReqMatcher = httpReqPattern.matcher(lines.get(0));
             if (!httpReqMatcher.find()) {
-                System.out.println("Invalid request");
-                System.out.println("Client disconnected!");
                 reader.close();
                 return;
             }
@@ -175,7 +168,6 @@ class ClientHandler extends Thread
             }
             this.output.close();
             reader.close();
-            System.out.println("Client disconnected!");
         } catch (IOException e) {
             e.printStackTrace();
         }
