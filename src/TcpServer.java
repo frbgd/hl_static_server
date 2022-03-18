@@ -13,8 +13,6 @@ public class TcpServer {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             System.out.println("Server started!");
 
-            // TODO вот здесь надо делать форки
-
             Socket clientSocket = null;
             while (true) {
                 try {

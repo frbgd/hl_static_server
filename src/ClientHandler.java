@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -12,7 +13,7 @@ class ClientHandler extends Thread
 {
     private static final Pattern httpReqPattern = Pattern.compile("^(GET|HEAD|POST|PUT|OPTIONS|DELETE|CONNECT|TRACE|PATCH) (/[\\w./\\-?=%&]*) HTTP/(1\\.[01])$");
     private static final SimpleDateFormat dateFormatter = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-    private static final String rootDir = "/Users/a19567938/IdeaProjects/hl_static_server/static";
+    private static final String rootDir = "/Users/a19567938/IdeaProjects/http-test-suite";
     
     final InputStreamReader input;
     final OutputStream output;
@@ -70,10 +71,16 @@ class ClientHandler extends Thread
                 return;
             }
             String method = httpReqMatcher.group(1);
+
             String filepath = httpReqMatcher.group(2);
+            if (filepath.lastIndexOf('?') != -1) {
+                filepath = filepath.substring(0, filepath.lastIndexOf('?'));
+            }
+            filepath = java.net.URLDecoder.decode(filepath, StandardCharsets.UTF_8.name());
             if (Objects.equals(filepath, "/")) {
                 filepath = "/index.html";
             }
+            filepath = filepath.replace("/..", "");
             String version = httpReqMatcher.group(3);
 
             switch (method) {
@@ -85,16 +92,44 @@ class ClientHandler extends Thread
                         file = new File(String.format("%s%s", rootDir, filepath));
                         fileInputStream = new FileInputStream(file);
                     } catch (Exception ex) {
+                        if (file.isDirectory()) {
+                            try {
+                                filepath += "index.html";
+                                file = new File(String.format("%s%s", rootDir, filepath));
+                                fileInputStream = new FileInputStream(file);
+                            } catch (Exception exc) {
+                                String statusLine = String.format("HTTP/%s 403 Forbidden\r\n", version);
+                                String responseHeaders = String.format(
+                                        "Date: %s\r\nServer: hl_static_server\r\nContent-Length: 0\r\nConnection: close\r\nContent-type: text/html\r\n",
+                                        dateFormatter.format(new Date())
+                                );
+                                byte[] bytes = String.format("%s%s\r\n", statusLine, responseHeaders).getBytes();
+                                this.output.write(bytes, 0, bytes.length);
+                                break;
+                            }
+                        } else {
+                            String statusLine = String.format("HTTP/%s 404 Not Found\r\n", version);
+                            String responseHeaders = String.format(
+                                    "Date: %s\r\nServer: hl_static_server\r\nContent-Length: 0\r\nConnection: close\r\nContent-type: text/html\r\n",
+                                    dateFormatter.format(new Date())
+                            );
+                            byte[] bytes = String.format("%s%s\r\n", statusLine, responseHeaders).getBytes();
+                            this.output.write(bytes, 0, bytes.length);
+                            break;
+                        }
+                    }
+
+                    if (filepath.endsWith("/")) {
                         String statusLine = String.format("HTTP/%s 404 Not Found\r\n", version);
                         String responseHeaders = String.format(
                                 "Date: %s\r\nServer: hl_static_server\r\nContent-Length: 0\r\nConnection: close\r\nContent-type: text/html\r\n",
                                 dateFormatter.format(new Date())
-
                         );
                         byte[] bytes = String.format("%s%s\r\n", statusLine, responseHeaders).getBytes();
                         this.output.write(bytes, 0, bytes.length);
                         break;
                     }
+
                     String extension = getFileExtension(file);
                     String contentType = switch (extension) {
                         case (".html") -> "text/html";
