@@ -75,6 +75,6 @@ public class TcpServer {
         }
     }
     private static final int DEFAULT_PORT = 81;
-    private static final String DEFAULT_CONFIG_PATH = "/etc/httpd.conf";
+    private static final String DEFAULT_CONFIG_PATH = "/app/httpd.conf";
     private static final Pattern configPattern = Pattern.compile("^(\\w+) (.+)$");
 }
